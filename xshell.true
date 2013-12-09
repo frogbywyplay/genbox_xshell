@@ -1,0 +1,43 @@
+#!/usr/bin/env python2.5 
+# Copyright 2006-2013 Wyplay. All Rights Reserved.
+
+import sys
+import os
+
+XSHELL_RC='/usr/share/xshell/xshell.rc'
+
+config_root = os.environ.get('PORTAGE_CONFIGROOT', '/usr/targets/current/root')
+target_root = os.environ.get('ROOT', '/usr/targets/current/root')
+
+if not os.path.isdir(config_root):
+	print "%s is not a directory check value of PORTAGE_CONFIGROOT environment variable" % config_root
+	sys.exit(1)
+if not os.path.isdir(target_root):
+	print "%s is not a directory, check value of ROOT environment variable" % target_root
+	sys.exit(2)
+
+import portage
+cfg = portage.config(config_incrementals=portage.INCREMENTALS,
+                     config_root=config_root,
+                     target_root=target_root)
+
+oldenv = os.environ.copy()
+if not os.environ.has_key('TARGET'):
+    os.environ['TARGET'] = os.path.basename(os.path.realpath(os.environ['ROOT'] + '/..'))
+os.environ.update(cfg)
+os.environ['PROFILE_PATHS'] = "\n".join(cfg.profiles)
+cmdline = "/bin/bash"
+if len(sys.argv) > 1:
+	os.environ['BASH_ENV'] = XSHELL_RC
+	cmdline += " -c '%s'" % (' '.join(sys.argv[1:]))
+else:
+	cmdline += " --rcfile %s" % XSHELL_RC
+ret = os.system(cmdline)
+# restore old environment
+for xx in filter(lambda x: x not in oldenv.keys(), os.environ.keys()):
+    del os.environ[xx]
+sys.exit(os.WEXITSTATUS(ret))
+
+# Local variables:
+# mode: python
+# End: 

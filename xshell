@@ -1,0 +1,4 @@
+#!/bin/bash
+# Copyright 2006-2013 Wyplay. All Rights Reserved.
+
+SFLAVOUR=$(basename $0) xexec /usr/share/xshell/xshell.true $*

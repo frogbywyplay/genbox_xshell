@@ -1,0 +1,135 @@
+# Copyright 2006-2013 Wyplay. All Rights Reserved.
+
+source /usr/lib/portage/bin/isolated-functions.sh || {
+    echo "${argv0}: Could not source /usr/lib/portage/bin/isolated-functions.sh!"
+    exit 1
+}
+
+qa_source() {
+    local shopts=$(shopt) OLDIFS="$IFS"
+    local retval
+    source "$@"
+    retval=$?
+    [[ $shopts != $(shopt) ]] &&
+    eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
+    [[ "$IFS" != "$OLDIFS" ]] &&
+    eqawarn "QA Notice: Global IFS changed and was not restored while sourcing '$*'"
+    return $retval
+}
+
+# source all bashrcs in profile directories
+cross_profile_bashrcs() {
+    local OCC="${CC}" OCXX="${CXX}"
+    # source the existing profile.bashrc's.
+    save_IFS
+    IFS=$'\n'
+    local x
+    for x in ${PROFILE_PATHS}; do
+	# Must unset it so that it doesn't mess up assumptions in the RCs.
+	unset IFS
+	[ -f "${x}/profile.bashrc" ] && qa_source "${x}/profile.bashrc"
+    done
+    restore_IFS
+    # We assume if people are changing shopts in their bashrc they do so at their
+    # own peril.  This is the ONLY non-portage bit of code that can change shopts
+    # without a QA violation.
+    if [ -f "${PORTAGE_BASHRC}" ]; then
+		# If $- contains x, then tracing has already enabled elsewhere for some
+		# reason.  We preserve it's state so as not to interfere.
+	if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
+	    source "${PORTAGE_BASHRC}"
+	else
+	    set -x
+	    source "${PORTAGE_BASHRC}"
+	    set +x
+	fi
+    fi
+    [ ! -z "${OCC}" ] && export CC="${OCC}"
+    [ ! -z "${OCXX}" ] && export CXX="${OCXX}"
+            
+    if [[ "${SFLAVOUR}" == "kxshell" ]]; then
+	# sanitize LDFLAGS by removing extra -Wl,-rpath-link
+	LDFLAGS="${LDFLAGS/-Wl,-rpath-link,* /}"
+    fi
+}
+
+
+cross_autotools () {
+    DESTDIR="${ROOT}"
+    export DESTDIR
+}
+
+cross_kernel () {
+    CROSS_COMPILE="${CHOST}-"
+    INSTALL_MOD_PATH="${ROOT}"
+    KERNELDIR="${ROOT}/usr/src/linux"
+    KERNEL_DIR="${ROOT}/usr/src/linux"
+    export CROSS_COMPILE INSTALL_MOD_PATH KERNELDIR KERNEL_DIR
+}
+
+cross_toolchain() {
+    AS=${CHOST}-as
+    AR=${CHOST}-ar
+    CC=${CHOST}-gcc
+    CXX=${CHOST}-g++
+    CPP="${CC} -E"
+    CXXCPP="${CXX} -E"
+    GDB=${CHOST}-gdb
+    LD=${CHOST}-ld
+    NM=${CHOST}-nm
+    OBJCOPY=${CHOST}-objcopy
+    OBJDUMP=${CHOST}-objdump
+    RANLIB=${CHOST}-ranlib
+    READELF=${CHOST}-readelf
+    SIZE=${CHOST}-size
+    STRINGS=${CHOST}-strings
+    STRIP=${CHOST}-strip
+    
+    export AS AR CC CXX CPP CXXCPP GDB LD NM OBJCOPY OBJDUMP RANLIB READELF SIZE STRINGS STRIP    
+}
+
+cross_qt() {
+    QMAKEPATH="${ROOT}/usr"
+    export QMAKEPATH
+}
+
+cross_init() {
+    if [[ "${SFLAVOUR}" == "kxshell" ]] && [[ -n ${CHOST_KERNEL} ]]; then
+	CHOST=${CHOST_KERNEL}
+	export CHOST
+    fi
+    cross_toolchain
+    cross_kernel
+    cross_autotools
+    cross_qt
+    cross_profile_bashrcs
+}
+
+cross_prompt() {
+    if [[ "${SFLAVOUR}" == "kxshell" ]]; then
+	PS1='\[\e[01;31m\]cross-compile (${TARGET})\[\e[01;34m\] \W \$\[\e[00m\] '
+    else
+	PS1='\[\e[01;33m\]cross-compile (${TARGET})\[\e[01;34m\] \W \$\[\e[00m\] '
+    fi
+    export PS1
+}
+
+is_interactive() {
+    case "$-" in
+    *i*) return 0;;
+    *) return 1;;
+    esac
+}
+
+is_interactive && {
+echo ""
+echo "******************************************************************************"
+echo "*                  Welcome to Cross compilation Environment                  *"
+echo "* Please check http://wiki.wyplay.int/doku.php/wyplay:genbox:usage for usage *"
+echo "******************************************************************************"
+
+alias xmerge='echo Do not use xmerge in cross-compilation environment'
+alias emerge='echo Do not use emerge in cross-compilation environment'
+}
+cross_init
+cross_prompt
