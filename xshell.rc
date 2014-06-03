@@ -140,7 +140,6 @@ is_interactive && {
 echo ""
 echo "******************************************************************************"
 echo "*                  Welcome to Cross compilation Environment                  *"
-echo "* Please check http://wiki.wyplay.int/doku.php/wyplay:genbox:usage for usage *"
 echo "******************************************************************************"
 
 alias xmerge='echo Do not use xmerge in cross-compilation environment'
