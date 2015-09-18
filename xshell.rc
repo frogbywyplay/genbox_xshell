@@ -15,8 +15,8 @@
 # along with this program; see file COPYING.
 # If not, see <http://www.gnu.org/licenses/>.
 
-source /usr/lib/portage/bin/isolated-functions.sh || {
-    echo "${argv0}: Could not source /usr/lib/portage/bin/isolated-functions.sh!"
+source /usr/lib/portage/python2.7/isolated-functions.sh || {
+    echo "${argv0}: Could not source /usr/lib/portage/python2.7/isolated-functions.sh!"
     exit 1
 }
 
